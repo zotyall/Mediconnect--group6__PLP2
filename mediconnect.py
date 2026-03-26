@@ -120,3 +120,66 @@ def pick(items, prompt):
 def ask_int(prompt):
     try:    return int(input(prompt).strip())
     except: return None
+
+
+# ── Shared views ─────────────────────────────────────────────────────────────
+
+def show_stock():
+    hr()
+    for med, qty in get_stock().items():
+        print(f"  {med:<20}: {qty}  {'LOW' if qty<=5 else ''}")
+    go()
+
+def show_history(username):
+    hr(); print(f"HISTORY — {username}"); hr()
+    rows = q("SELECT date,sickness,medicines,pharmacy FROM history WHERE username=? ORDER BY id", (username,))
+    if not rows: print("No records yet.")
+    else:
+        for i,(date,sick,meds,pharm) in enumerate(rows,1):
+            print(f"\n  {i}. {date} | {sick} | {meds} | {pharm}")
+    go()
+
+# ── Admin ────────────────────────────────────────────────────────────────────
+
+def admin_menu():
+    hr()
+    if input("Admin password: ").strip() != ADMIN_PW:
+        print(" Wrong password."); return
+
+    def all_patients():
+        rows = q("SELECT username FROM patients ORDER BY username")
+        hr()
+        [print(f"  {i}. {r[0]}") for i,r in enumerate(rows,1)] if rows else print("No patients.")
+        go()
+
+    def patient_history():
+        u = input("Patient username: ").strip()
+        if not q("SELECT 1 FROM patients WHERE username=?", (u,)): print(" Not found."); go(); return
+        show_history(u)
+
+    def list_pharmacists():
+        hr()
+        [print(f"  {i}. {p.capitalize()}") for i,p in enumerate(PHARMACISTS,1)]
+        go()
+
+    def add_pharmacist():
+        n = input("Name: ").strip().lower()
+        if n in PHARMACISTS: print("Already exists.")
+        else: PHARMACISTS.append(n); print(f" {n.capitalize()} added.")
+        go()
+
+    def remove_pharmacist():
+        n = input("Name to remove: ").strip().lower()
+        if n not in PHARMACISTS: print(" Not found.")
+        else: PHARMACISTS.remove(n); print(f" Removed.")
+        go()
+
+    menu("ADMIN MENU", [
+        ("View all patients",    all_patients),
+        ("View patient history", patient_history),
+        ("View pharmacists",     list_pharmacists),
+        ("Add pharmacist",       add_pharmacist),
+        ("Remove pharmacist",    remove_pharmacist),
+        ("View stock",           show_stock),
+        ("Logout",               None),
+    ])
