@@ -70,6 +70,7 @@ def run(sql, params=()):
     with cx() as c:
         c.execute(sql, params)
 
+# ── Stock shortcuts ──────────────────────────────────────────────────────────
 def get_stock():
     return dict(q("SELECT medicine, quantity FROM stock ORDER BY medicine"))
 
@@ -89,7 +90,7 @@ def log(action, med, by, qty=None, before=None, after=None, patient=None):
     run("INSERT INTO stock_log (date,action,medicine,qty,before,after,by_whom,patient) VALUES (?,?,?,?,?,?,?,?)",
         (ts(), action, med, qty, before, after, by, patient))
     
-
+# ── UI helpers ───────────────────────────────────────────────────────────────
 def hr():   print("\n" + "-" * 40)
 def go():   input("\nPress Enter to continue...")
 def ts():   return datetime.now().strftime("%Y-%m-%d %H:%M")
