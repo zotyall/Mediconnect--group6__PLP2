@@ -185,6 +185,72 @@ def admin_menu():
         ("Logout",               None),
     ])
 
+# ── Pharmacist ───────────────────────────────────────────────────────────────
+
+def pharmacist_menu():
+    hr()
+    name = input("Your name: ").strip().lower()
+    if name not in PHARMACISTS: print(" Not found. Contact admin."); return
+    print(f"\n Welcome, {name.capitalize()}!")
+
+    def add_med():
+        med = input("Medicine name: ").strip()
+        if med in get_stock(): print("Exists. Use restock."); go(); return
+        qty = ask_int("Amount: ")
+        if qty is None: print(" Invalid."); go(); return
+        run("INSERT OR IGNORE INTO stock VALUES (?,?)", (med, qty))
+        log("Added", med, name.capitalize(), qty=qty)
+        print(f" {med} added ({qty} units)."); go()
+
+    def restock():
+        med = input("Medicine: ").strip(); stock = get_stock()
+        if med not in stock: print(" Not found."); go(); return
+        qty = ask_int("How many to add: ")
+        if qty is None: print(" Invalid."); go(); return
+        new = stock[med] + qty
+        run("UPDATE stock SET quantity=? WHERE medicine=?", (new, med))
+        log("Restocked", med, name.capitalize(), qty=qty)
+        print(f" Restocked. Total: {new}"); go()
+
+    def dispense_to():
+        patient = input("Patient username: ").strip()
+        if not q("SELECT 1 FROM patients WHERE username=?", (patient,)): print(" Patient not found."); go(); return
+        med = input("Medicine: ").strip()
+        if dispense(med, name.capitalize(), patient):
+            run("INSERT INTO history (username,date,sickness,medicines,insurance,pharmacy) VALUES (?,?,?,?,?,?)",
+                (patient, ts(), "Walk-in", med, "N/A", f"By {name.capitalize()}"))
+            print(f" {med} dispensed to {patient}. Remaining: {get_stock().get(med,0)}")
+        else:
+            print(" Medicine not found or out of stock.")
+        go()
+
+    def view_log():
+        hr(); print("STOCK LOG"); hr()
+        rows = q("SELECT date,action,medicine,qty,before,after,by_whom,patient FROM stock_log ORDER BY id")
+        if not rows: print("No activity yet.")
+        for date,action,med,qty,before,after,by,pat in rows:
+            if action == "Dispensed":
+                print(f"  [{date}] {med}: {before}→{after}  To: {pat}  By: {by}")
+            elif action == "Out of stock":
+                print(f"  [{date}]  {med} OUT OF STOCK  By: {by}")
+            else:
+                print(f"  [{date}] {action} — {med}  Qty: {qty}  By: {by}")
+        go()
+
+    def pat_history():
+        u = input("Patient username: ").strip()
+        if not q("SELECT 1 FROM patients WHERE username=?", (u,)): print(" Not found."); go(); return
+        show_history(u)
+
+    menu(f"PHARMACIST MENU ({name.capitalize()})", [
+        ("View stock",           show_stock),
+        ("Add new medicine",     add_med),
+        ("Restock medicine",     restock),
+        ("Dispense to patient",  dispense_to),
+        ("View patient history", pat_history),
+        ("View stock log",       view_log),
+        ("Logout",               None),
+    ])
 # ── Patient ──────────────────────────────────────────────────────────────────
 
 def register():
