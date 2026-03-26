@@ -193,7 +193,7 @@ def register():
     if not u or not p: print("Fields cannot be empty."); go(); return
     try:
         run("INSERT INTO patients VALUES (?,?)", (u, p))
-        print(f"\n✅ Account created! Welcome, {u}.")
+        print(f"\n Account created! Welcome, {u}.")
     except sqlite3.IntegrityError:
         print("Username taken.")
     go()
