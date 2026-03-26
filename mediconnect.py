@@ -69,3 +69,54 @@ def q(sql, params=()):
 def run(sql, params=()):
     with cx() as c:
         c.execute(sql, params)
+
+def get_stock():
+    return dict(q("SELECT medicine, quantity FROM stock ORDER BY medicine"))
+
+def dispense(med, by, patient):
+    """Deduct 1 unit, log it, flag if out of stock. Returns False if unavailable."""
+    stock = get_stock()
+    if med not in stock or stock[med] <= 0:
+        return False
+    before, after = stock[med], stock[med] - 1
+    run("UPDATE stock SET quantity=? WHERE medicine=?", (after, med))
+    log("Dispensed", med, by, before=before, after=after, patient=patient)
+    if after == 0:
+        log("Out of stock", med, by, before=before, after=0)
+    return True
+
+def log(action, med, by, qty=None, before=None, after=None, patient=None):
+    run("INSERT INTO stock_log (date,action,medicine,qty,before,after,by_whom,patient) VALUES (?,?,?,?,?,?,?,?)",
+        (ts(), action, med, qty, before, after, by, patient))
+    
+
+def hr():   print("\n" + "-" * 40)
+def go():   input("\nPress Enter to continue...")
+def ts():   return datetime.now().strftime("%Y-%m-%d %H:%M")
+
+def menu(title, options):
+    """options = list of (label, callable). Returns when user picks 'Back/Logout'."""
+    while True:
+        hr(); print(title); hr()
+        for i, (label, _) in enumerate(options, 1):
+            print(f"  {i}. {label}")
+        last = str(len(options))
+        c = input("\nYour choice: ").strip()
+        if c == last:
+            break
+        elif c.isdigit() and 1 <= int(c) < len(options):
+            options[int(c)-1][1]()
+        else:
+            print("Invalid choice.")
+
+def pick(items, prompt):
+    for i, x in enumerate(items, 1): print(f"  {i}. {x}")
+    while True:
+        c = input(f"\n{prompt}: ").strip()
+        if c.isdigit() and 1 <= int(c) <= len(items):
+            return items[int(c)-1]
+        print("  Invalid. Try again.")
+
+def ask_int(prompt):
+    try:    return int(input(prompt).strip())
+    except: return None
