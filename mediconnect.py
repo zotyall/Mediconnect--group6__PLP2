@@ -43,3 +43,29 @@ SEED_STOCK = {
     "Vitamin C":25,"Antihistamine":18,"Metformin":20,"Insulin":10,
     "Ciprofloxacin":20,"Omeprazole":20,"Amlodipine":15,"Buscopan":22,
 }
+
+# ── DB ───────────────────────────────────────────────────────────────────────
+
+def cx():
+    return sqlite3.connect(DB)
+
+def init_db():
+    with cx() as c:
+        c.executescript("""
+            CREATE TABLE IF NOT EXISTS patients  (username TEXT PRIMARY KEY, password TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS history   (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT,
+                date TEXT, sickness TEXT, medicines TEXT, insurance TEXT, pharmacy TEXT);
+            CREATE TABLE IF NOT EXISTS stock     (medicine TEXT PRIMARY KEY, quantity INTEGER);
+            CREATE TABLE IF NOT EXISTS stock_log (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT,
+                action TEXT, medicine TEXT, qty INTEGER, before INTEGER, after INTEGER, by_whom TEXT, patient TEXT);
+        """)
+        if not c.execute("SELECT 1 FROM stock LIMIT 1").fetchone():
+            c.executemany("INSERT INTO stock VALUES (?,?)", SEED_STOCK.items())
+
+def q(sql, params=()):
+    with cx() as c:
+        return c.execute(sql, params).fetchall()
+
+def run(sql, params=()):
+    with cx() as c:
+        c.execute(sql, params)
