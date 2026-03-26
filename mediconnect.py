@@ -184,3 +184,83 @@ def admin_menu():
         ("View stock",           show_stock),
         ("Logout",               None),
     ])
+
+# ── Patient ──────────────────────────────────────────────────────────────────
+
+def register():
+    hr(); print("REGISTER"); hr()
+    u = input("Username: ").strip(); p = input("Password: ").strip()
+    if not u or not p: print("Fields cannot be empty."); go(); return
+    try:
+        run("INSERT INTO patients VALUES (?,?)", (u, p))
+        print(f"\n✅ Account created! Welcome, {u}.")
+    except sqlite3.IntegrityError:
+        print("Username taken.")
+    go()
+
+def patient_login():
+    hr(); print("PATIENT LOGIN"); hr()
+    u = input("Username: ").strip(); p = input("Password: ").strip()
+    if not q("SELECT 1 FROM patients WHERE username=? AND password=?", (u, p)):
+        print("Wrong credentials."); go(); return None
+    print(f"\n Welcome, {u}!"); return u
+
+def get_medicine(username, insurance, sickness):
+    visited = set()
+    while True:
+        hr(); print("PHARMACIES NEAR YOU"); hr()
+        matches = sorted(
+            [(n,d) for n,d in PHARMACIES.items()
+             if insurance in d["ins"] and sickness in d["sick"] and n not in visited],
+            key=lambda x: x[1]["rating"], reverse=True
+        )
+        if not matches:
+            print("No pharmacies available. Visit the nearest hospital."); go(); return
+
+        for n,d in matches:
+            print(f"  - {n}  |  {d['km']} km  |  ⭐ {d['rating']}")
+
+        chosen = pick([n for n,_ in matches], "Choose a pharmacy")
+        visited.add(chosen)
+        km = PHARMACIES[chosen]["km"]
+
+        hr()
+        print(f"Distance: {km} km  —  {'Walk (~10 min)' if km<=2 else 'Short moto/taxi' if km<=4 else 'Take a taxi/bus'}")
+        hr(); print("MEDICINES YOU WILL RECEIVE"); hr()
+        [print(f"  - {m}") for m in SICKNESS_MEDS[sickness]]
+        go()
+
+        if input("Did you get your medicine? (yes/no): ").strip().lower() == "yes":
+            for med in SICKNESS_MEDS[sickness]:
+                dispense(med, chosen, username)
+            run("INSERT INTO history (username,date,sickness,medicines,insurance,pharmacy) VALUES (?,?,?,?,?,?)",
+                (username, ts(), sickness, ", ".join(SICKNESS_MEDS[sickness]), insurance, chosen))
+            print("\n E-Prescription saved.")
+
+            if input("View E-Prescription? (yes/no): ").strip().lower() == "yes":
+                hr(); print("E-PRESCRIPTION"); hr()
+                print(f"  Date      : {ts()}\n  Sickness  : {sickness}")
+                print(f"  Medicines : {', '.join(SICKNESS_MEDS[sickness])}")
+                print(f"  Insurance : {insurance}\n  Pharmacy  : {chosen}")
+            return
+        print("\nLet's find you another pharmacy...")
+
+def start_service(username):
+    hr(); print("STEP 1 — Select insurance"); hr()
+    insurance = pick(list(INSURANCES.keys()), "Pick insurance")
+    while True:
+        hr(); print("STEP 2 — What are you sick from?"); hr()
+        sickness = pick(list(SICKNESS_MEDS.keys()), "Pick your sickness")
+        get_medicine(username, insurance, sickness)
+        hr()
+        if input("Another condition? (yes/no): ").strip().lower() != "yes":
+            print(f"\nGet well soon, {username}! Take your medicines as directed."); go(); break
+
+def patient_portal(username):
+    menu(f"PATIENT MENU ({username})", [
+        ("Start Medical Service",      lambda: start_service(username)),
+        ("View Prescription History",  lambda: show_history(username)),
+        ("Logout",                     None),
+    ])
+
+
