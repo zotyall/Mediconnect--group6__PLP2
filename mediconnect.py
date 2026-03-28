@@ -330,3 +330,18 @@ def patient_portal(username):
     ])
 
 
+# ── Main ─────────────────────────────────────────────────────────────────────
+
+def main():
+    init_db()
+    menu("MEDICONNECT — Pharmacies | Patients | Insurance", [
+        ("Patient Login",    lambda: (lambda u: patient_portal(u) if u else None)(patient_login())),
+        ("Patient Register", register),
+        ("Pharmacist Login", pharmacist_menu),
+        ("Admin Login",      admin_menu),
+        ("Exit",             None),
+    ])
+    print("\nThank you for using MediConnect. Goodbye!")
+
+if __name__ == "__main__":
+    main()
